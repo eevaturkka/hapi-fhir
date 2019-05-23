@@ -7,8 +7,10 @@ import ca.uhn.fhir.jpa.dao.data.ISearchIncludeDao;
 import ca.uhn.fhir.jpa.dao.data.ISearchResultDao;
 import ca.uhn.fhir.jpa.entity.Search;
 import ca.uhn.fhir.jpa.entity.SearchResult;
-import ca.uhn.fhir.jpa.entity.SearchStatusEnum;
+import ca.uhn.fhir.interceptor.api.IInterceptorBroadcaster;
+import ca.uhn.fhir.jpa.model.search.SearchStatusEnum;
 import ca.uhn.fhir.jpa.entity.SearchTypeEnum;
+import ca.uhn.fhir.jpa.searchparam.SearchParameterMap;
 import ca.uhn.fhir.jpa.util.BaseIterator;
 import ca.uhn.fhir.model.dstu2.resource.Patient;
 import ca.uhn.fhir.rest.api.CacheControlDirective;
@@ -38,6 +40,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.persistence.EntityManager;
+import java.io.IOException;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -75,6 +78,8 @@ public class SearchCoordinatorSvcImplTest {
 	private Search myCurrentSearch;
 	@Mock
 	private DaoRegistry myDaoRegistry;
+	@Mock
+	private IInterceptorBroadcaster myInterceptorBroadcaster;
 
 	@After
 	public void after() {
@@ -93,6 +98,7 @@ public class SearchCoordinatorSvcImplTest {
 		mySvc.setSearchDaoIncludeForUnitTest(mySearchIncludeDao);
 		mySvc.setSearchDaoResultForUnitTest(mySearchResultDao);
 		mySvc.setDaoRegistryForUnitTest(myDaoRegistry);
+		mySvc.setInterceptorBroadcasterForUnitTest(myInterceptorBroadcaster);
 
 		myDaoConfig = new DaoConfig();
 		mySvc.setDaoConfigForUnitTest(myDaoConfig);
@@ -145,7 +151,7 @@ public class SearchCoordinatorSvcImplTest {
 
 		List<Long> pids = createPidSequence(10, 800);
 		IResultIterator iter = new FailAfterNIterator(new SlowIterator(pids.iterator(), 2), 300);
-		when(mySearchBuider.createQuery(Mockito.same(params), any(String.class))).thenReturn(iter);
+		when(mySearchBuider.createQuery(Mockito.same(params), any())).thenReturn(iter);
 
 		IBundleProvider result = mySvc.registerSearch(myCallingDao, params, "Patient", new CacheControlDirective());
 		assertNotNull(result.getUuid());
@@ -166,7 +172,7 @@ public class SearchCoordinatorSvcImplTest {
 
 		List<Long> pids = createPidSequence(10, 800);
 		SlowIterator iter = new SlowIterator(pids.iterator(), 1);
-		when(mySearchBuider.createQuery(any(), any(String.class))).thenReturn(iter);
+		when(mySearchBuider.createQuery(any(), any())).thenReturn(iter);
 		doAnswer(loadPids()).when(mySearchBuider).loadResourcesByPid(any(List.class), any(List.class), any(Set.class), anyBoolean(), any(EntityManager.class), any(FhirContext.class), same(myCallingDao));
 
 		when(mySearchResultDao.findWithSearchUuid(any(), any())).thenAnswer(t -> {
@@ -223,7 +229,7 @@ public class SearchCoordinatorSvcImplTest {
 
 		List<Long> pids = createPidSequence(10, 800);
 		SlowIterator iter = new SlowIterator(pids.iterator(), 2);
-		when(mySearchBuider.createQuery(Mockito.same(params), any(String.class))).thenReturn(iter);
+		when(mySearchBuider.createQuery(Mockito.same(params), any())).thenReturn(iter);
 
 		doAnswer(loadPids()).when(mySearchBuider).loadResourcesByPid(any(List.class), any(List.class), any(Set.class), anyBoolean(), any(EntityManager.class), any(FhirContext.class), same(myCallingDao));
 
@@ -251,7 +257,7 @@ public class SearchCoordinatorSvcImplTest {
 
 		List<Long> pids = createPidSequence(10, 800);
 		IResultIterator iter = new SlowIterator(pids.iterator(), 2);
-		when(mySearchBuider.createQuery(Mockito.same(params), any(String.class))).thenReturn(iter);
+		when(mySearchBuider.createQuery(Mockito.same(params), any())).thenReturn(iter);
 		when(mySearchDao.save(any())).thenAnswer(t -> t.getArguments()[0]);
 		doAnswer(loadPids()).when(mySearchBuider).loadResourcesByPid(any(List.class), any(List.class), any(Set.class), anyBoolean(), any(EntityManager.class), any(FhirContext.class), same(myCallingDao));
 
@@ -295,7 +301,7 @@ public class SearchCoordinatorSvcImplTest {
 
 		List<Long> pids = createPidSequence(10, 100);
 		SlowIterator iter = new SlowIterator(pids.iterator(), 2);
-		when(mySearchBuider.createQuery(Mockito.same(params), any(String.class))).thenReturn(iter);
+		when(mySearchBuider.createQuery(Mockito.same(params), any())).thenReturn(iter);
 
 		doAnswer(loadPids()).when(mySearchBuider).loadResourcesByPid(any(List.class), any(List.class), any(Set.class), anyBoolean(), any(EntityManager.class), any(FhirContext.class), same(myCallingDao));
 
@@ -384,7 +390,7 @@ public class SearchCoordinatorSvcImplTest {
 		params.add("name", new StringParam("ANAME"));
 
 		List<Long> pids = createPidSequence(10, 800);
-		when(mySearchBuider.createQuery(Mockito.same(params), any(String.class))).thenReturn(new ResultIterator(pids.iterator()));
+		when(mySearchBuider.createQuery(Mockito.same(params), any())).thenReturn(new ResultIterator(pids.iterator()));
 
 		doAnswer(loadPids()).when(mySearchBuider).loadResourcesByPid(eq(pids), any(List.class), any(Set.class), anyBoolean(), any(EntityManager.class), any(FhirContext.class), same(myCallingDao));
 
@@ -405,7 +411,7 @@ public class SearchCoordinatorSvcImplTest {
 		params.add("name", new StringParam("ANAME"));
 
 		List<Long> pids = createPidSequence(10, 800);
-		when(mySearchBuider.createQuery(Mockito.same(params), any(String.class))).thenReturn(new ResultIterator(pids.iterator()));
+		when(mySearchBuider.createQuery(Mockito.same(params), any())).thenReturn(new ResultIterator(pids.iterator()));
 
 		pids = createPidSequence(10, 110);
 		doAnswer(loadPids()).when(mySearchBuider).loadResourcesByPid(eq(pids), any(List.class), any(Set.class), anyBoolean(), any(EntityManager.class), any(FhirContext.class), same(myCallingDao));
@@ -448,6 +454,11 @@ public class SearchCoordinatorSvcImplTest {
 		public int getSkippedCount() {
 			return myWrap.getSkippedCount();
 		}
+
+		@Override
+		public void close() throws IOException {
+			// nothing
+		}
 	}
 
 	public static class ResultIterator extends BaseIterator<Long> implements IResultIterator {
@@ -471,6 +482,11 @@ public class SearchCoordinatorSvcImplTest {
 		@Override
 		public int getSkippedCount() {
 			return 0;
+		}
+
+		@Override
+		public void close() throws IOException {
+			// nothing
 		}
 	}
 
@@ -534,6 +550,10 @@ public class SearchCoordinatorSvcImplTest {
 			}
 		}
 
+		@Override
+		public void close() {
+			// nothing
+		}
 	}
 
 	@AfterClass

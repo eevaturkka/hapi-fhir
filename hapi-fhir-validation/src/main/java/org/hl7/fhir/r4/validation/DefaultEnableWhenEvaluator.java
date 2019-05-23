@@ -48,6 +48,7 @@ public class DefaultEnableWhenEvaluator implements IEnableWhenEvaluator {
 
     protected EnableWhenResult evaluateCondition(QuestionnaireItemEnableWhenComponent enableCondition,
             Element questionnaireResponse, String linkId) {
+        //TODO: Fix EnableWhenResult stuff
         List<Element> answerItems = findQuestionAnswers(questionnaireResponse,
                 enableCondition.getQuestion());        
         QuestionnaireItemOperator operator = enableCondition.getOperator();
@@ -65,7 +66,10 @@ public class DefaultEnableWhenEvaluator implements IEnableWhenEvaluator {
         return new EnableWhenResult(result, linkId, enableCondition, questionnaireResponse);
     }
     
-    public Type convertToType(Element element)  {
+    private Type convertToType(Element element) throws FHIRException {
+    		if (element.fhirType().equals("BackboneElement")) {
+    			return null;
+			}
         Type b = new Factory().create(element.fhirType());
         if (b instanceof PrimitiveType) {
           ((PrimitiveType<?>) b).setValueAsString(element.primitiveValue());
@@ -91,6 +95,9 @@ public class DefaultEnableWhenEvaluator implements IEnableWhenEvaluator {
         }
         try {
         	actualAnswer = convertToType(answer);
+        	if (actualAnswer == null) {
+        		return false;
+			}
         } catch (FHIRException e) {
             throw new UnprocessableEntityException("Unexpected answer type", e);
         }
@@ -116,7 +123,7 @@ public class DefaultEnableWhenEvaluator implements IEnableWhenEvaluator {
     
 	private boolean comparePrimitiveAnswer(PrimitiveType<?> actualAnswer, PrimitiveType<?> expectedAnswer, QuestionnaireItemOperator questionnaireItemOperator) {                
         if (actualAnswer.getValue() instanceof Comparable){            
-           return compareComparable((Comparable)actualAnswer.getValue(), (Comparable) expectedAnswer.getValue(), questionnaireItemOperator);                  
+           return compareComparable((Comparable<?>)actualAnswer.getValue(), (Comparable<?>) expectedAnswer.getValue(), questionnaireItemOperator);                  
         } else if (questionnaireItemOperator == QuestionnaireItemOperator.EQUAL){
             return actualAnswer.equalsShallow(expectedAnswer);
         } else if (questionnaireItemOperator == QuestionnaireItemOperator.NOT_EQUAL){
@@ -213,5 +220,4 @@ public class DefaultEnableWhenEvaluator implements IEnableWhenEvaluator {
         }
         return false;
     }
-   
 }

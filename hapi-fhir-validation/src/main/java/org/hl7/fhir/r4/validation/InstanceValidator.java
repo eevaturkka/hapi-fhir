@@ -2382,7 +2382,7 @@ public class InstanceValidator extends BaseValidator implements IResourceValidat
     this.allowXsiLocation = allowXsiLocation;
   }
   
-  public void setMyEnableWhenEvaluator(IEnableWhenEvaluator myEnableWhenEvaluator) {
+  public void setEnableWhenEvaluator(IEnableWhenEvaluator myEnableWhenEvaluator) {
 	this.myEnableWhenEvaluator = myEnableWhenEvaluator;
   }
 
